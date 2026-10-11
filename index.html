@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>OUTLAND — Your next adventure starts outside</title>
+<meta name="description" content="OUTLAND is your personal AI adventure guide. Turn spare moments into outdoor discoveries, powered by open-source AI." />
+<style>
+:root{--ink:#18231d;--paper:#f5f4eb;--green:#244d3a;--lime:#d5f36a;--muted:#647168;--card:#fffef8}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 ui-sans-serif,system-ui,-apple-system,sans-serif}
+header{max-width:1080px;margin:auto;padding:24px 24px;display:flex;justify-content:space-between;align-items:center}
+.brand{font-weight:900;letter-spacing:-.04em;font-size:1.35rem;display:flex;align-items:center;gap:6px}
+.pill{border:1px solid #cbd1c6;border-radius:999px;padding:7px 12px;font-size:.8rem;color:var(--muted)}
+main{max-width:1080px;margin:22px auto;padding:0 24px 48px;display:grid;grid-template-columns:1fr .85fr;gap:28px}
+.eyebrow{text-transform:uppercase;letter-spacing:.15em;font-size:.75rem;font-weight:800;color:var(--green)}
+h1{font-size:clamp(3rem,7vw,6.4rem);line-height:.92;letter-spacing:-.075em;margin:18px 0 20px;max-width:700px}
+.lede{font-size:1.15rem;color:#4f5b52;max-width:570px;line-height:1.55}
+.panel{background:var(--card);border:1px solid #dfe2d7;border-radius:24px;padding:24px;box-shadow:0 8px 0 #e4e4d8}
+label{display:block;font-weight:750;margin:16px 0 7px}select,input{width:100%;padding:13px 14px;border-radius:12px;border:1px solid #cbd1c6;background:white;color:var(--ink);font:inherit}
+select:focus,input:focus,button:focus{outline:2px solid var(--green);outline-offset:2px}
+button{cursor:pointer;border:0;border-radius:12px;background:var(--green);color:white;padding:14px 18px;font:inherit;font-weight:800;width:100%;margin-top:18px;transition:background 0.15s ease}
+button:hover{filter:brightness(1.1)}button:disabled{opacity:.55;cursor:wait}
+.note{font-size:.87rem;color:var(--muted);margin-top:12px;line-height:1.45}
+.result{margin-top:20px;background:#eff5dd;border-radius:18px;padding:22px;min-height:180px}
+.result-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.tag{display:inline-block;background:var(--lime);border-radius:999px;padding:4px 10px;font-size:.75rem;font-weight:800;letter-spacing:.03em}
+.source-badge{font-size:.75rem;font-weight:700;color:var(--muted)}
+.result-body{white-space:pre-wrap;font-size:.95rem;line-height:1.6}
+.result-body h2{margin:0 0 8px;letter-spacing:-.04em}
+.result-body p{margin:0;color:#3c483f}
+.steps{display:grid;gap:12px;margin-top:22px}.step{border-top:1px solid #dfe2d7;padding-top:12px}.step b{display:block}
+footer{max-width:1080px;margin:auto;padding:0 24px 28px;color:var(--muted);font-size:.85rem}
+@media(max-width:760px){main{grid-template-columns:1fr;margin-top:8px}header{padding:18px 20px}main{padding:0 20px 36px}h1{font-size:4rem}}
+</style>
+</head>
+<body>
+<header><div class="brand">🌲 OUTLAND</div><div class="pill" id="status">Local AI · checking…</div></header>
+<main>
+<section>
+<div class="eyebrow">Your next adventure starts outside</div>
+<h1>Less scroll.<br>More soul.</h1>
+<p class="lede">Your personal AI adventure guide. Turn spare moments into outdoor discoveries, powered by open-source AI. Your preferences stay on your machine when using local inference.</p>
+<div class="steps">
+<div class="step"><b>01 / Pick your energy</b>Choose a vibe and how much time you have.</div>
+<div class="step"><b>02 / Get a mission</b>AI creates a practical, low-pressure challenge.</div>
+<div class="step"><b>03 / Go do it</b>The screen gives you the plan, then gets out of your way.</div>
+</div>
+</section>
+<section class="panel">
+<div class="eyebrow">Your next real-world moment</div>
+<label for="time">Time available</label>
+<select id="time"><option>5 minutes</option><option selected>15 minutes</option><option>30 minutes</option><option>60 minutes</option></select>
+<label for="vibe">Current vibe</label>
+<select id="vibe"><option>Curious</option><option>Calm</option><option>Playful</option><option>Creative</option><option>Need a reset</option></select>
+<label for="place">Where are you going?</label>
+<select id="place"><option>Nearby park or garden</option><option>My street or neighbourhood</option><option>Campus</option><option>Balcony or backyard</option><option>Any safe outdoor place</option></select>
+<label for="interest">Optional interest</label>
+<input id="interest" maxlength="80" placeholder="e.g. photography, birds, architecture" />
+<button id="generate">Generate my mission ↗</button>
+<div class="note">Uses Ollama + an open-weight model on your own computer when available. A transparent fallback keeps the prototype usable without a model.</div>
+<div class="result" id="result" aria-live="polite">
+<div class="result-header"><span class="tag" id="resultTag">YOUR MISSION</span><span class="source-badge" id="sourceBadge">Ready</span></div>
+<div class="result-body" id="resultBody"><h2>Step outside, just a little.</h2><p>Choose your settings and generate a mission. No streaks, guilt, or endless feed.</p></div>
+</div>
+</section>
+</main>
+<footer>OUTLAND · Built for Hacktoberfest 2026 · Week 1 theme: Touch Grass · Open-source AI designed to make the screen the shortest part of the experience.</footer>
+<script>
+const $ = id => document.getElementById(id);
+const status = $('status');
+function fallbackMission(time, vibe, place, interest) {
+  const norm = (interest || '').toLowerCase().trim();
+  const v = vibe.toLowerCase();
+
+  if (/architect|build|facade|urban/i.test(norm)) {
+    return `MISSION: The Architectural Detail Scan\n\n1. Walk through ${place}, scanning building facades, window styles, and doorway arches.\n2. Compare two adjacent structures: observe how brick, stone, glass, or siding meet at the corners.\n3. Spot one distinct ornamental detail (such as an arch keystone, unique lintel, or ironwork) that reveals the structure's craftsmanship.\n\nWHY IT FITS: Channels your ${v} mindset into noticing local design details in ${place} within your ${time} window.\n\nSAFETY: Stay on public sidewalks and respect residential privacy at all times.`;
+  }
+
+  if (/bird|avian|feather|nest/i.test(norm)) {
+    return `MISSION: Canopy & Flight Horizon\n\n1. Walk into ${place} toward the nearest open sightline or cluster of trees.\n2. Stand quietly for 2 minutes: identify at least two distinct bird sounds or silhouettes in flight.\n3. Track one bird’s flight path with your eyes until it lands or leaves your field of view, noting its wing rhythm.\n\nWHY IT FITS: Engages your ${v} energy with direct bird observation that comfortably fits in ${time}.\n\nSAFETY: Keep a respectful distance from wildlife and stay on marked public paths.`;
+  }
+
+  if (/tree|plant|botan|leaf|green|garden|flower/i.test(norm)) {
+    return `MISSION: Micro-Botanical Pattern Search\n\n1. Walk through ${place} and locate three different species of plants or trees.\n2. Examine the leaf arrangements and bark textures: note which leaves have smooth versus serrated edges.\n3. Observe how sunlight filters through the canopy or branches before your ${time} ends.\n\nWHY IT FITS: A grounding, ${v} exploration of local plant life that requires no tools or screens.\n\nSAFETY: Admire foliage without picking plants, disturbing roots, or entering private garden beds.`;
+  }
+
+  if (/photo|frame|visual|light|shadow/i.test(norm)) {
+    return `MISSION: The Living Viewfinder\n\n1. Walk through ${place} using your fingers as a framing box, with your phone tucked away.\n2. Frame three distinct scenes where natural light and shadow create strong geometric contrasts.\n3. Locate one interesting texture (weathered wood, rough stone, or rusted metal) and study its surface from arm's length.\n\nWHY IT FITS: Trains your visual eye and ${v} curiosity through pure real-world observation.\n\nSAFETY: Stay aware of foot traffic, cyclists, and uneven terrain while framing scenes.`;
+  }
+
+  if (/sound|listen|audio|music/i.test(norm)) {
+    return `MISSION: The Three-Distance Soundscape\n\n1. Find a safe spot to stand or sit in ${place} and close your eyes for 30 seconds.\n2. Identify three sounds at varying distances: one right beside you, one halfway across ${place}, and one on the far horizon.\n3. Walk gently forward and observe which sounds fade out and which new ones emerge.\n\nWHY IT FITS: Centers your ${v} awareness entirely on real-world acoustic layers in ${time}.\n\nSAFETY: Keep aware of your surroundings and avoid blocking public walkways.`;
+  }
+
+  if (norm.length > 0) {
+    const formattedInterest = interest.charAt(0).toUpperCase() + interest.slice(1);
+    return `MISSION: The ${formattedInterest} Discovery Walk\n\n1. Set out into ${place} with your attention focused entirely on finding three real-world connections to ${interest}.\n2. Pause when you spot the first example: observe its texture, shape, and how it interacts with the surrounding space.\n3. Before concluding your ${time}, notice how your surroundings reflect ${interest} in a way you had not previously noticed.\n\nWHY IT FITS: Connects your ${v} mindset with your passion for ${interest} without any screens or tools.\n\nSAFETY: Stay on public sidewalks or paths and be mindful of pedestrians and traffic.`;
+  }
+
+  const generalMissions = [
+    {
+      title: "The Five-Detail Observation",
+      steps: [
+        `Begin walking through ${place} at a steady, unhurried pace.`,
+        "Notice 5 sensory details: a rough texture, a contrasting color, a subtle scent, a repeating pattern, and a tiny movement.",
+        "Before heading back, pause at your favorite detail and take three deep breaths while observing it."
+      ],
+      why: `A low-pressure attention reset that turns an ordinary ${time} walk into a refreshing discovery.`
+    },
+    {
+      title: "Color Spectrum Hunt",
+      steps: [
+        `Choose one specific color before you start walking through ${place}.`,
+        "Locate 4 naturally occurring shades of that color in leaves, stone, bark, or sky without disturbing anything.",
+        "Before your time is up, notice which shade was the most unexpected."
+      ],
+      why: `Sharpens everyday visual awareness while keeping your phone tucked away for ${time}.`
+    },
+    {
+      title: "Sound Map",
+      steps: [
+        `Stand or sit somewhere safe in ${place}.`,
+        "For two minutes, listen for sounds near, in the middle distance, and far away.",
+        "Walk a little further and observe which sounds change as you move."
+      ],
+      why: `A gentle grounding exercise that makes the outdoors feel more vivid in ${time}.`
+    }
+  ];
+
+  const item = generalMissions[Math.floor(Math.random() * generalMissions.length)];
+  return `MISSION: ${item.title}\n\n1. ${item.steps[0]}\n2. ${item.steps[1]}\n3. ${item.steps[2]}\n\nWHY IT FITS: ${item.why}\n\nSAFETY: Stay in public, familiar places, respect wildlife and private property, and follow local conditions.`;
+}
+
+function sanitizeAiMission(raw) {
+  if (!raw) return '';
+  return raw
+    .trim()
+    .split('\n')
+    .map(line => {
+      let l = line.trim();
+      l = l.replace(/^(\d+\.\s*)\[(?:Step\s*\d+:?\s*)?[^\]]+\]:?\s*/i, '$1');
+      l = l.replace(/^(\d+\.\s*)\[(.*)\]$/, '$1$2');
+      return l;
+    })
+    .join('\n');
+}
+
+function isValidMission(text) {
+  if (!text || text.length < 50) return false;
+  const hasTitle = /MISSION:/i.test(text);
+  const hasStep1 = /\b1[\.\)]/i.test(text);
+  const hasStep2 = /\b2[\.\)]/i.test(text);
+  const hasStep3 = /\b3[\.\)]/i.test(text);
+  return hasTitle && hasStep1 && hasStep2 && hasStep3;
+}
+
+async function checkModel(){
+  try{const r=await fetch('http://localhost:11434/api/tags',{signal:AbortSignal.timeout(1200)});if(!r.ok)throw 0;const d=await r.json();status.textContent=d.models?.length?'Local AI · Ollama detected':'Local AI · install a model';}
+  catch(e){status.textContent='Demo mode · local model not connected';}
+}
+
+async function generate(){
+  const btn=$('generate');
+  btn.disabled=true;
+  btn.textContent='Thinking up a mission…';
+  const time=$('time').value;
+  const vibe=$('vibe').value;
+  const place=$('place').value;
+  const interest=$('interest').value.trim();
+  const resultBody=$('resultBody');
+  const resultTag=$('resultTag');
+  const sourceBadge=$('sourceBadge');
+
+  sourceBadge.textContent='Generating…';
+
+  const prompt=`You are OUTLAND, a personal outdoor adventure guide.
+Create ONE outdoor mission with these user preferences:
+- Available time: ${time}
+- Current vibe: ${vibe}
+- Location: ${place}
+- Interest: ${interest || 'general outdoor observation'}
+
+CORE RULES:
+1. SELF-CONTAINED: Every step must be self-contained and immediately actionable. If you ask a question or propose a challenge, provide the exact question or challenge right in the step. Never mention an unstated riddle, mystery, or missing clue.
+2. NO EQUIPMENT: Strictly zero tools, no notebooks, no pens, no cameras, no phone screens. Hands-free walking and observation only.
+3. NO PHOTO TAKING: Do not tell the user to take photos or record anything.
+4. REALISTIC FOR DURATION: All actions must realistically fit within ${time} at ${place}.
+5. EXACT 3 STEPS: Exactly 3 practical steps.
+6. SECTIONS REQUIRED: Output plain text with all 5 sections:
+MISSION: [Catchy title]
+1. [Starting action and walk direction in ${place}]
+2. [Observation challenge centered on ${interest || 'surroundings'}]
+3. [Closing reflection before returning]
+WHY IT FITS: [One sentence linking ${vibe} vibe and ${interest || 'observation'}]
+SAFETY: [One concise sentence for public safety and respecting property]
+
+Output all 5 sections now:`;
+
+  try{
+    const r=await fetch('http://localhost:11434/api/generate',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'qwen2.5:3b',
+        prompt,
+        stream:true,
+        options:{
+          temperature:0.4,
+          num_ctx:1024,
+          num_predict:250
+        }
+      }),
+      signal:AbortSignal.timeout(30000)
+    });
+    if(!r.ok||!r.body)throw new Error('Ollama model unavailable');
+
+    resultTag.textContent='LOCAL AI MISSION';
+    sourceBadge.textContent='⚡ Streaming…';
+    resultBody.textContent='';
+
+    const reader=r.body.getReader();
+    const decoder=new TextDecoder();
+    let accumulated='';
+    let buffer='';
+
+    while(true){
+      const {done,value}=await reader.read();
+      if(done)break;
+      buffer+=decoder.decode(value,{stream:true});
+      const lines=buffer.split('\n');
+      buffer=lines.pop()||'';
+      for(const line of lines){
+        if(!line.trim())continue;
+        try{
+          const chunk=JSON.parse(line);
+          if(chunk.response){
+            accumulated+=chunk.response;
+            resultBody.textContent=accumulated;
+          }
+        }catch(_){}
+      }
+    }
+    if(buffer.trim()){
+      try{
+        const chunk=JSON.parse(buffer);
+        if(chunk.response){
+          accumulated+=chunk.response;
+        }
+      }catch(_){}
+    }
+
+    const cleanMission=sanitizeAiMission(accumulated);
+    if(!isValidMission(cleanMission))throw new Error('Mission format validation failed');
+    resultBody.textContent=cleanMission;
+    resultTag.textContent='LOCAL AI MISSION';
+    sourceBadge.textContent='⚡ Qwen2.5 3B';
+    status.textContent='Powered by local open-weight AI';
+  }catch(e){
+    resultBody.textContent=fallbackMission(time,vibe,place,interest);
+    resultTag.textContent='OFFLINE MISSION';
+    sourceBadge.textContent='Deterministic fallback';
+    status.textContent='Demo mode · deterministic fallback';
+  }finally{
+    btn.disabled=false;
+    btn.textContent='Generate another mission ↗';
+  }
+}
+$('generate').addEventListener('click',generate);checkModel();
+</script>
+</body></html>
